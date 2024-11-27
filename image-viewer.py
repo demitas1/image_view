@@ -2,9 +2,12 @@
 from pathlib import Path
 import json
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QFileDialog,
+    QMenu, QSizePolicy
+)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QTransform
+from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QTransform, QAction
 from pathlib import Path
 
 
@@ -19,38 +22,142 @@ class ImageViewer(QMainWindow):
         # 設定を読み込む
         self.load_settings()
 
-        # 画像ファイルのリストをフィルタリング
-        self.image_files = [
-            f for f in image_files
-            if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.gif']
-        ]
-
-        if not self.image_files:
-            print("表示可能な画像ファイルが見つかりませんでした。")
-            sys.exit(1)
+        # コマンドライン引数で画像ファイルが指定された場合はそれを使用
+        if image_files:
+            self.image_files = self.filter_image_files(image_files)
+        # 指定がない場合は保存されていた最近のファイルリストを使用
+        else:
+            self.image_files = self.filter_image_files(self.recent_files)
 
         self.current_index = 0
 
         # メインウィンドウの設定
         self.setWindowTitle('Image Viewer')
+        # リサイズを許可
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # ウィンドウの最小サイズを設定
+        self.setMinimumSize(100, 100)
 
         # 画像表示用のラベルを作成
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # ラベルの最小サイズを0に設定
+        self.image_label.setMinimumSize(0, 0)
         self.setCentralWidget(self.image_label)
+
+        # コンテキストメニューの設定
+        self.setup_context_menu()
 
         # 最初の画像を表示
         self.show_current_image()
 
 
-    def show_current_image(self):
-        # 画像を読み込み
-        image_path = str(self.image_files[self.current_index])
-        pixmap = QPixmap(image_path)
+    def filter_image_files(self, files):
+        """有効な画像ファイルをフィルタリング"""
+        valid_files = []
+        for f in files:
+            if not isinstance(f, Path):
+                f = Path(f)
+            if f.exists() and f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.gif']:
+                valid_files.append(f)
+        return valid_files
 
-        if pixmap.isNull():
-            print(f"画像の読み込みに失敗しました: {image_path}")
-            return
+
+    def create_blank_image(self):
+        """黒い画像を生成"""
+        width = self.image_label.width()
+        height = self.image_label.height()
+        image = QImage(width, height, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
+        return QPixmap.fromImage(image)
+
+
+    def setup_context_menu(self):
+        """コンテキストメニューの設定"""
+        self.image_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.image_label.customContextMenuRequested.connect(self.show_context_menu)
+
+
+    def show_context_menu(self, position):
+        """コンテキストメニューを表示"""
+        # TODO: H-flip の追加
+        # TODO: フォントサイズ調整
+
+        context_menu = QMenu(self)
+
+        # Open Files アクション
+        open_action = QAction("Open Files", self)
+        open_action.triggered.connect(self.open_file_dialog)
+        context_menu.addAction(open_action)
+
+        # Open Directory アクション
+        open_action = QAction("Open Directory", self)
+        open_action.triggered.connect(self.open_directory_dialog)
+        context_menu.addAction(open_action)
+
+        # セパレータを追加
+        context_menu.addSeparator()
+
+        # Quit アクション
+        quit_action = QAction("Quit", self)
+        quit_action.triggered.connect(self.close)
+        context_menu.addAction(quit_action)
+
+        # メニューを表示
+        context_menu.exec(self.image_label.mapToGlobal(position))
+
+
+    def open_file_dialog(self):
+        """ファイル選択ダイアログを表示"""
+        # TODO: ディレクトリ指定
+        selected_files, _ = QFileDialog.getOpenFileNames(
+            None,
+            "Select Files",
+            "",
+            "All Files (*)"
+        )
+        if selected_files:
+            # 新しい画像ファイルをリストに追加
+            new_files = [Path(f) for f in selected_files]
+            self.image_files = self.filter_image_files(new_files)
+            self.current_index = 0
+            self.show_current_image()
+
+
+    def open_directory_dialog(self):
+        # ディレクトリ選択
+        # TODO: ディレクトリ指定
+        directory = QFileDialog.getExistingDirectory(
+            None,
+            "Select Directory",
+            "",
+            QFileDialog.Option.ShowDirsOnly
+        )
+        if directory:
+            p = Path(directory)
+            if p.is_dir():
+                selected_files = p.glob('**/*')
+                # 新しい画像ファイルをリストに追加
+                new_files = [Path(f) for f in selected_files]
+                self.image_files = self.filter_image_files(new_files)
+                self.current_index = 0
+                self.show_current_image()
+
+
+    def show_current_image(self):
+        """現在の画像を表示"""
+        if not self.image_files:
+            # 画像ファイルが無い場合は黒画像を表示
+            pixmap = self.create_blank_image()
+        else:
+            # 画像を読み込み
+            image_path = str(self.image_files[self.current_index])
+            pixmap = QPixmap(image_path)
+
+            if pixmap.isNull():
+                # 画像の読み込みに失敗した場合は黒画像を表示
+                pixmap = self.create_blank_image()
 
         # ウィンドウサイズに合わせて画像をスケール
         scaled_pixmap = pixmap.scaled(
@@ -60,13 +167,17 @@ class ImageViewer(QMainWindow):
         )
 
         # QTransformを使用して左右反転
-        # TODO: 左右反転フラグを作成し、キーアサインでトグルする
         transform = QTransform()
         transform.scale(-1, 1)  # x軸方向に-1をかけることで左右反転
         flipped_pixmap = scaled_pixmap.transformed(transform)
 
         self.image_label.setPixmap(flipped_pixmap)
-        self.setWindowTitle(f'Image Viewer - {self.image_files[self.current_index].name}')
+
+        # ウィンドウタイトルを更新
+        if self.image_files:
+            self.setWindowTitle(f'Image Viewer - {self.image_files[self.current_index].name}')
+        else:
+            self.setWindowTitle('Image Viewer - No Image')
 
 
     def resizeEvent(self, event):
@@ -97,7 +208,8 @@ class ImageViewer(QMainWindow):
                 'y': 100,
                 'width': 800,
                 'height': 600
-            }
+            },
+            'recent_files': []  # 最近開いたファイルのリスト
         }
 
         try:
@@ -113,6 +225,9 @@ class ImageViewer(QMainWindow):
                     window_settings['width'],
                     window_settings['height']
                 )
+
+                # 最近開いたファイルのリストを取得
+                self.recent_files = [Path(f) for f in settings.get('recent_files', [])]
             else:
                 # デフォルト設定を適用
                 window_settings = default_settings['window']
@@ -122,6 +237,7 @@ class ImageViewer(QMainWindow):
                     window_settings['width'],
                     window_settings['height']
                 )
+                self.recent_files = []
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             print(f"設定ファイルの読み込みエラー: {e}")
             # エラーの場合はデフォルト設定を使用
@@ -132,20 +248,33 @@ class ImageViewer(QMainWindow):
                 window_settings['width'],
                 window_settings['height']
             )
+            self.recent_files = []
 
 
     def save_settings(self):
         """設定をJSONファイルに保存"""
-        settings = {
-            'window': {
+        # TODO: カレントファイルも保存
+        try:
+            # 既存の設定を読み込む
+            if self.config_file.exists():
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
+            else:
+                settings = {}
+
+            # ウィンドウ設定を更新
+            settings['window'] = {
                 'x': self.x(),
                 'y': self.y(),
                 'width': self.width(),
                 'height': self.height()
             }
-        }
 
-        try:
+            # 画像ファイルリストが空でない場合のみ、recent_filesを更新
+            if self.image_files:
+                settings['recent_files'] = [str(f) for f in self.image_files]
+
+            # 設定を保存
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=4, ensure_ascii=False)
         except Exception as e:
@@ -161,29 +290,77 @@ class ImageViewer(QMainWindow):
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Q:
             self.close()
-        elif event.key() == Qt.Key.Key_Right:
+        elif event.key() == Qt.Key.Key_Right and self.image_files:
             self.current_index = (self.current_index + 1) % len(self.image_files)
             self.show_current_image()
-        elif event.key() == Qt.Key.Key_Left:
+        elif event.key() == Qt.Key.Key_Left and self.image_files:
             self.current_index = (self.current_index - 1) % len(self.image_files)
             self.show_current_image()
+        elif event.key() == Qt.Key.Key_Plus or event.key() == Qt.Key.Key_Equal:  # '='キーも'+'として扱う
+            self.resize_window(increase=True)
+        elif event.key() == Qt.Key.Key_Minus:
+            self.resize_window(increase=False)
+
+
+    def resize_window(self, increase: bool):
+        """ウィンドウサイズを変更する"""
+        current_width = self.width()
+        current_height = self.height()
+        current_x = self.x()
+        current_y = self.y()
+
+        if increase:
+            # 拡大（10%増加）
+            if current_height >= 3000:  # 最大サイズに達している場合
+                return
+
+            new_height = min(int(current_height * 1.1), 3000)
+            # アスペクト比を維持
+            new_width = int(new_height * (current_width / current_height))
+
+        else:
+            # 縮小（10%減少）
+            if current_height <= 500:  # 最小サイズに達している場合
+                return
+
+            new_height = max(int(current_height * 0.9), 500)
+            # アスペクト比を維持
+            new_width = int(new_height * (current_width / current_height))
+
+        # サイズの変更量
+        width_delta = new_width - current_width
+        height_delta = new_height - current_height
+
+        # 新しい位置（中心を基準に調整）
+        new_x = current_x - width_delta // 2
+        new_y = current_y - height_delta // 2
+
+        # ウィンドウの位置とサイズを更新
+        self.setGeometry(new_x, new_y, new_width, new_height)
+
+        # 画像を新しいサイズで表示し直す
+        self.show_current_image()
 
 
 def main():
-    # TODO: natural-sort.py を参考に argparse を実装する
-
+    # TODO: argparse
+    #   --fresh: パス設定を読み込まない
     if len(sys.argv) < 2:
-        print("使用方法: python image_viewer.py [画像ファイル/ディレクトリ ...]")
-        sys.exit(1)
+        app = QApplication(sys.argv)
+        viewer = ImageViewer([])
+        viewer.show()
+        sys.exit(app.exec())
 
     # 画像ファイルのリストを作成
+    # TODO: natural sort
+    # TODO: random 機能
     image_files = []
     for path in sys.argv[1:]:
         p = Path(path)
         if p.is_file():
             image_files.append(p)
         elif p.is_dir():
-            image_files.extend(p.glob('*'))
+            image_files.extend(p.glob('**/*'))
 
     app = QApplication(sys.argv)
     viewer = ImageViewer(image_files)
