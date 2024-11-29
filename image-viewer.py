@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
 from pathlib import Path
 import json
 import sys
 from dataclasses import dataclass
+
+from natural_sort import natural_path_sort_key
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QFileDialog,
@@ -103,7 +104,12 @@ class ImageViewer(QMainWindow):
                 f = Path(f)
             if f.exists() and f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.gif']:
                 valid_files.append(f)
-        return valid_files
+        return self.sort_image_files(valid_files)
+
+
+    def sort_image_files(self, files):
+        sorted_files = sorted(files, key=natural_path_sort_key)
+        return sorted_files
 
 
     def create_blank_image(self):
@@ -160,7 +166,7 @@ class ImageViewer(QMainWindow):
         )
         if selected_files:
             # 新しい画像ファイルをリストに追加
-            selected_files_sorted = sorted(selected_files)
+            selected_files_sorted = self.filter_image_files(selected_files)
             new_files = [Path(f) for f in selected_files_sorted]
             self.image_files = self.filter_image_files(new_files)
             self.current_index = 0
@@ -181,7 +187,7 @@ class ImageViewer(QMainWindow):
                 else:
                     selected_files = p.glob('*')
 
-                selected_files_sorted = sorted(selected_files)
+                selected_files_sorted = self.filter_image_files(selected_files)
                 new_files = [Path(f) for f in selected_files_sorted]
                 self.image_files = self.filter_image_files(new_files)
                 self.current_index = 0
