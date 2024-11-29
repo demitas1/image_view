@@ -26,6 +26,9 @@ class ImageViewer(QMainWindow):
         # 設定を読み込む
         self.load_settings()
 
+        # 水平反転設定
+        self.h_flip = False
+
         # ランダム設定
         # TODO: 保存設定に含めるかどうか要検討
         self.shuffle = False
@@ -90,6 +93,13 @@ class ImageViewer(QMainWindow):
             self.shuffle_table = []
 
 
+    def toggle_h_flip(self):
+        # 水平反転フラグの反転
+        self.h_flip = not self.h_flip
+        # 画像更新
+        self.show_current_image()
+
+
     def toggle_shuffle(self):
         if self.shuffle:
             # シャッフルをOFFにする場合、現在のシャッフル後のインデックスを使用する
@@ -117,9 +127,7 @@ class ImageViewer(QMainWindow):
 
     def show_context_menu(self, position):
         """コンテキストメニューを表示"""
-        # TODO: H-flip の追加
         # TODO: フォントサイズ調整
-
         context_menu = QMenu(self)
 
         # Open Files アクション
@@ -130,6 +138,15 @@ class ImageViewer(QMainWindow):
         # Open Directory アクション
         open_action = QAction("Open Directory", self)
         open_action.triggered.connect(self.open_directory_dialog)
+        context_menu.addAction(open_action)
+
+        # 水平反転
+        if self.h_flip:
+            text_toggle = "H-Flip OFF"
+        else:
+            text_toggle = "H-Flip ON"
+        open_action = QAction(text_toggle, self)
+        open_action.triggered.connect(self.toggle_h_flip)
         context_menu.addAction(open_action)
 
         # シャッフルON/OFF
@@ -227,10 +244,14 @@ class ImageViewer(QMainWindow):
         )
 
         # QTransformを使用して左右反転
-        transform = QTransform()
-        transform.scale(-1, 1)  # x軸方向に-1をかけることで左右反転
-        flipped_pixmap = scaled_pixmap.transformed(transform)
+        if self.h_flip:
+            transform = QTransform()
+            transform.scale(-1, 1)  # x軸方向に-1をかけることで左右反転
+            flipped_pixmap = scaled_pixmap.transformed(transform)
+        else:
+            flipped_pixmap = scaled_pixmap
 
+        # 画像更新
         self.image_label.setPixmap(flipped_pixmap)
 
         # ウィンドウタイトルを更新
@@ -360,6 +381,8 @@ class ImageViewer(QMainWindow):
             self.resize_window(increase=False)
         elif event.key() == Qt.Key.Key_R:
             self.toggle_shuffle()
+        elif event.key() == Qt.Key.Key_H:
+            self.toggle_h_flip()
 
 
     def mousePressEvent(self, event):
