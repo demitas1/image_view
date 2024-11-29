@@ -1,57 +1,17 @@
 from pathlib import Path
 import json
 import sys
-from dataclasses import dataclass
 
 from natural_sort import natural_path_sort_key
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QFileDialog,
     QMenu, QSizePolicy,
-    QCheckBox, QVBoxLayout, QWidget,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QTransform, QAction
 
-
-@dataclass
-class DialogResult:
-    directory: str
-    include_subdirs: bool
-
-
-class CustomDirectoryDialog(QFileDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Select Directory")
-        self.setFileMode(QFileDialog.FileMode.Directory)
-        self.setOption(QFileDialog.Option.ShowDirsOnly)
-
-        # デフォルトのレイアウトを取得
-        layout = self.layout()
-
-        # チェックボックスを含む追加のウィジェットを作成
-        additional_widget = QWidget()
-        additional_layout = QVBoxLayout(additional_widget)
-
-        # チェックボックスの作成と追加
-        self.subdirs_checkbox = QCheckBox("Include subdirectories")
-        additional_layout.addWidget(self.subdirs_checkbox)
-        additional_layout.setContentsMargins(0, 0, 0, 0)
-
-        # 追加のウィジェットをメインレイアウトに追加
-        # （FileTypeコンボボックスの下に配置）
-        layout.addWidget(additional_widget, 4, 0, 1, -1)
-
-    def get_result(self):
-        if self.exec() == QFileDialog.DialogCode.Accepted:
-            selected_dirs = self.selectedFiles()
-            if selected_dirs:
-                return DialogResult(
-                    directory=selected_dirs[0],
-                    include_subdirs=self.subdirs_checkbox.isChecked()
-                )
-        return None
+from open_dir_dialog import DialogResult, CustomDirectoryDialog
 
 
 class ImageViewer(QMainWindow):
@@ -339,16 +299,26 @@ class ImageViewer(QMainWindow):
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Q:
             self.close()
-        elif event.key() == Qt.Key.Key_Right and self.image_files:
-            self.current_index = (self.current_index + 1) % len(self.image_files)
-            self.show_current_image()
-        elif event.key() == Qt.Key.Key_Left and self.image_files:
-            self.current_index = (self.current_index - 1) % len(self.image_files)
-            self.show_current_image()
+        elif event.key() == Qt.Key.Key_Right:
+            self.show_next_image()
+        elif event.key() == Qt.Key.Key_Left:
+            self.show_prev_image()
         elif event.key() == Qt.Key.Key_Plus or event.key() == Qt.Key.Key_Equal:  # '='キーも'+'として扱う
             self.resize_window(increase=True)
         elif event.key() == Qt.Key.Key_Minus:
             self.resize_window(increase=False)
+
+
+    def show_prev_image(self):
+        if self.image_files:
+            self.current_index = (self.current_index - 1) % len(self.image_files)
+            self.show_current_image()
+
+
+    def show_next_image(self):
+        if self.image_files:
+            self.current_index = (self.current_index + 1) % len(self.image_files)
+            self.show_current_image()
 
 
     def resize_window(self, increase: bool):
