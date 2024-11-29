@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import sys
+import random
 
 from natural_sort import natural_path_sort_key
 
@@ -25,14 +26,20 @@ class ImageViewer(QMainWindow):
         # 設定を読み込む
         self.load_settings()
 
+        # ランダム設定
+        # TODO: 保存設定に含めるかどうか要検討
+        self.shuffle = False
+
         # コマンドライン引数で画像ファイルが指定された場合はそれを使用
         if image_files:
             self.image_files = self.filter_image_files(image_files)
         # 指定がない場合は保存されていた最近のファイルリストを使用
         else:
             self.image_files = self.filter_image_files(self.recent_files)
-
         self.current_index = 0
+
+        # シャッフルテーブルの作製
+        self.generate_shuffle_table()
 
         # メインウィンドウの設定
         self.setWindowTitle('Image Viewer')
@@ -69,6 +76,30 @@ class ImageViewer(QMainWindow):
         return sorted_files
 
 
+    def generate_shuffle_table(self):
+        if not self.image_files:
+            self.shuffle_table = []
+            return
+
+        n_images = len(self.image_files)
+        if n_images > 0:
+            sequence = list(range(n_images + 1))
+            random.shuffle(sequence)
+            self.shuffle_table = sequence
+        else:
+            self.shuffle_table = []
+
+
+    def toggle_shuffle(self):
+        if self.shuffle:
+            # シャッフルをOFFにする場合、現在のシャッフル後のインデックスを使用する
+            index = self.shuffle_table[self.current_index]
+            self.current_index = index
+
+        # シャッフルフラグの反転
+        self.shuffle = not self.shuffle
+
+
     def create_blank_image(self):
         """黒い画像を生成"""
         width = self.image_label.width()
@@ -101,6 +132,15 @@ class ImageViewer(QMainWindow):
         open_action.triggered.connect(self.open_directory_dialog)
         context_menu.addAction(open_action)
 
+        # シャッフルON/OFF
+        if self.shuffle:
+            text_toggle = "Shuffle OFF"
+        else:
+            text_toggle = "Shuffle ON"
+        open_action = QAction(text_toggle, self)
+        open_action.triggered.connect(self.toggle_shuffle)
+        context_menu.addAction(open_action)
+
         # セパレータを追加
         context_menu.addSeparator()
 
@@ -126,6 +166,11 @@ class ImageViewer(QMainWindow):
             selected_files_sorted = self.filter_image_files(selected_files)
             self.image_files = [Path(f) for f in selected_files_sorted]
             self.current_index = 0
+
+            # シャッフルテーブルの作製
+            self.generate_shuffle_table()
+
+            # 新しい画像の表示
             self.show_current_image()
 
 
@@ -146,6 +191,11 @@ class ImageViewer(QMainWindow):
                 selected_files_sorted = self.filter_image_files(selected_files)
                 self.image_files = [Path(f) for f in selected_files_sorted]
                 self.current_index = 0
+
+                # シャッフルテーブルの作製
+                self.generate_shuffle_table()
+
+                # 新しい画像の表示
                 self.show_current_image()
 
 
@@ -155,8 +205,14 @@ class ImageViewer(QMainWindow):
             # 画像ファイルが無い場合は黒画像を表示
             pixmap = self.create_blank_image()
         else:
+            # シャッフル
+            if self.shuffle:
+                index = self.shuffle_table[self.current_index]
+            else:
+                index = self.current_index
+
             # 画像を読み込み
-            image_path = str(self.image_files[self.current_index])
+            image_path = str(self.image_files[index])
             pixmap = QPixmap(image_path)
 
             if pixmap.isNull():
@@ -179,7 +235,7 @@ class ImageViewer(QMainWindow):
 
         # ウィンドウタイトルを更新
         if self.image_files:
-            self.setWindowTitle(f'Image Viewer - {self.image_files[self.current_index].name}')
+            self.setWindowTitle(f'Image Viewer - {self.image_files[index].name}')
         else:
             self.setWindowTitle('Image Viewer - No Image')
 
@@ -302,6 +358,8 @@ class ImageViewer(QMainWindow):
             self.resize_window(increase=True)
         elif event.key() == Qt.Key.Key_Minus:
             self.resize_window(increase=False)
+        elif event.key() == Qt.Key.Key_R:
+            self.toggle_shuffle()
 
 
     def mousePressEvent(self, event):
