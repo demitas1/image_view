@@ -309,6 +309,13 @@ class ImageViewer(QMainWindow):
             self.resize_window(increase=False)
 
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.show_next_image()
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.show_prev_image()
+
+
     def show_prev_image(self):
         if self.image_files:
             self.current_index = (self.current_index - 1) % len(self.image_files)
