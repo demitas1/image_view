@@ -3,16 +3,15 @@ import json
 import sys
 import random
 
-from natural_sort import natural_path_sort_key
-
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QFileDialog,
     QMenu, QSizePolicy,
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QTransform, QAction
+from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QTransform, QAction, QKeySequence
 
 from open_dir_dialog import DialogResult, CustomDirectoryDialog
+from natural_sort import natural_path_sort_key
 
 
 class ImageViewer(QMainWindow):
@@ -68,6 +67,7 @@ class ImageViewer(QMainWindow):
 
     def filter_image_files(self, files):
         """有効な画像ファイルをフィルタリング"""
+        # TODO: better function name
         valid_files = []
         for f in files:
             if not isinstance(f, Path):
@@ -110,6 +110,14 @@ class ImageViewer(QMainWindow):
         self.shuffle = not self.shuffle
 
 
+    def copy_image_path(self):
+        """現在の画像のパスをクリップボードにコピー"""
+        if self.image_files:
+            # クリップボードに画像のパスをコピー
+            clipboard = QApplication.clipboard()
+            clipboard.setText(str(self.image_files[self.current_index].absolute()))
+
+
     def create_blank_image(self):
         """黒い画像を生成"""
         width = self.image_label.width()
@@ -123,6 +131,13 @@ class ImageViewer(QMainWindow):
         """コンテキストメニューの設定"""
         self.image_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.image_label.customContextMenuRequested.connect(self.show_context_menu)
+
+        # Copy アクションをショートカットキーと共に作成
+        # OS 標準の Ctrl+C を使用する
+        self.copy_action = QAction("Copy", self)
+        self.copy_action.setShortcut(QKeySequence.StandardKey.Copy)
+        self.copy_action.triggered.connect(self.copy_image_path)
+        self.addAction(self.copy_action)
 
 
     def show_context_menu(self, position):
@@ -139,6 +154,9 @@ class ImageViewer(QMainWindow):
         open_action = QAction("Open Directory", self)
         open_action.triggered.connect(self.open_directory_dialog)
         context_menu.addAction(open_action)
+
+        # Copy アクション
+        context_menu.addAction(self.copy_action)
 
         # 水平反転
         if self.h_flip:
@@ -454,8 +472,6 @@ def main():
         sys.exit(app.exec())
 
     # 画像ファイルのリストを作成
-    # TODO: natural sort
-    # TODO: random 機能
     image_files = []
     for path in sys.argv[1:]:
         p = Path(path)
