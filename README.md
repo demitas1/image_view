@@ -17,3 +17,9 @@ python image_view.py <directory>
   - Right:  Next image
   - Left:   Previous image
   - Q:      Quit
+
+# License
+
+- GPL v3
+
+- Icon files are licensed under MIT by https://feathericons.com/

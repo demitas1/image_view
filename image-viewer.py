@@ -3,12 +3,15 @@ import json
 import sys
 import random
 
+from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QFileDialog,
     QMenu, QSizePolicy,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QImage, QKeyEvent, QTransform, QAction, QKeySequence
+from PyQt6.QtGui import (
+    QPixmap, QImage, QKeyEvent, QTransform,
+    QAction, QKeySequence, QIcon,
+)
 
 from open_dir_dialog import DialogResult, CustomDirectoryDialog
 from natural_sort import natural_path_sort_key
@@ -17,6 +20,18 @@ from natural_sort import natural_path_sort_key
 class ImageViewer(QMainWindow):
     def __init__(self, image_files):
         super().__init__()
+
+        # 複数サイズのアイコンを含むQIconを作成
+        icon = QIcon()
+        icon.addFile('icon/icon_16.png', QSize(16, 16))
+        icon.addFile('icon/icon_32.png', QSize(32, 32))
+        icon.addFile('icon/icon_48.png', QSize(48, 48))
+        icon.addFile('icon/icon_64.png', QSize(64, 64))
+        icon.addFile('icon/icon_128.png', QSize(128, 128))
+        icon.addFile('icon/icon_256.png', QSize(256, 256))
+
+        # アプリケーションにアイコンを設定
+        self.setWindowIcon(icon)
 
         # 設定ファイルのパスを設定
         self.config_dir = self.get_config_dir()
@@ -466,6 +481,11 @@ def main():
     # TODO: argparse
     #   --fresh: パス設定を読み込まない
     if len(sys.argv) < 2:
+        # High DPIサポートを有効化
+        QApplication.setHighDpiScaleFactorRoundingPolicy(
+            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        )
+
         app = QApplication(sys.argv)
         viewer = ImageViewer([])
         viewer.show()
