@@ -44,16 +44,16 @@ class ImageViewer(QMainWindow):
         self.h_flip = False
 
         # ランダム設定
-        # TODO: 保存設定に含めるかどうか要検討
         self.shuffle = False
 
         # コマンドライン引数で画像ファイルが指定された場合はそれを使用
         if image_files:
             self.image_files = self.filter_image_files(image_files)
+            self.current_index = 0
         # 指定がない場合は保存されていた最近のファイルリストを使用
         else:
             self.image_files = self.filter_image_files(self.recent_files)
-        self.current_index = 0
+            self.current_index = self.recent_index
 
         # シャッフルテーブルの作製
         self.generate_shuffle_table()
@@ -117,7 +117,7 @@ class ImageViewer(QMainWindow):
 
     def toggle_shuffle(self):
         if self.shuffle:
-            # シャッフルをOFFにする場合、現在のシャッフル後のインデックスを使用する
+            # シャッフルをOFFにする場合、シャッフル後のインデックスを使用する
             index = self.shuffle_table[self.current_index]
             self.current_index = index
 
@@ -157,8 +157,9 @@ class ImageViewer(QMainWindow):
 
     def show_context_menu(self, position):
         """コンテキストメニューを表示"""
-        # TODO: フォントサイズ調整
         context_menu = QMenu(self)
+        # フォントサイズ調整
+        context_menu.setStyleSheet(f'QMenu {{ font-size: 12pt; }}')
 
         # Open Files アクション
         open_action = QAction("Open Files", self)
@@ -323,7 +324,8 @@ class ImageViewer(QMainWindow):
                 'width': 800,
                 'height': 600
             },
-            'recent_files': []  # 最近開いたファイルのリスト
+            'recent_files': [],  # 最近開いたファイルのリスト
+            'recent_index': 0,
         }
 
         try:
@@ -342,6 +344,7 @@ class ImageViewer(QMainWindow):
 
                 # 最近開いたファイルのリストを取得
                 self.recent_files = [Path(f) for f in settings.get('recent_files', [])]
+                self.recent_index = int(settings.get('recent_index', '0'))
             else:
                 # デフォルト設定を適用
                 window_settings = default_settings['window']
@@ -352,6 +355,7 @@ class ImageViewer(QMainWindow):
                     window_settings['height']
                 )
                 self.recent_files = []
+                self.recent_index = 0
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             print(f"設定ファイルの読み込みエラー: {e}")
             # エラーの場合はデフォルト設定を使用
@@ -363,11 +367,11 @@ class ImageViewer(QMainWindow):
                 window_settings['height']
             )
             self.recent_files = []
+            self.recent_index = 0
 
 
     def save_settings(self):
         """設定をJSONファイルに保存"""
-        # TODO: カレントファイルも保存
         try:
             # 既存の設定を読み込む
             if self.config_file.exists():
@@ -387,6 +391,12 @@ class ImageViewer(QMainWindow):
             # 画像ファイルリストが空でない場合のみ、recent_filesを更新
             if self.image_files:
                 settings['recent_files'] = [str(f) for f in self.image_files]
+                if self.shuffle:
+                    # シャッフルをOFFにする場合、シャッフル後のインデックスを使用する
+                    index = self.shuffle_table[self.current_index]
+                else:
+                    index = self.current_index
+                settings['recent_index'] = str(index)
 
             # 設定を保存
             with open(self.config_file, 'w', encoding='utf-8') as f:

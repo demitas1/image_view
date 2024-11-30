@@ -12,6 +12,7 @@ build/
 release/
 external/
 log/
+tmp/
 *.xcf
 *.blend*
 *.jpg

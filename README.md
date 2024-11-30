@@ -14,9 +14,13 @@ pip install -r requrements.txt
 python image_view.py <directory>
 ```
 
-  - Right:  Next image
-  - Left:   Previous image
-  - Q:      Quit
+  - LMB / Right:  Next image
+  - MMB / Left:   Previous image
+  - RMB :   Context Menu
+  - R:  Toggle random order
+  - H:  Toggle H-flip
+  - Ctrl + C: Copy image path
+  - Q:  Quit
 
 # License
 
