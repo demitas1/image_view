@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import sys
 import random
+import argparse
 
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtWidgets import (
@@ -412,6 +413,7 @@ class ImageViewer(QMainWindow):
 
 
     def keyPressEvent(self, event: QKeyEvent):
+        # TODO: キーアサイン再考
         if event.key() == Qt.Key.Key_Q:
             self.close()
         elif event.key() == Qt.Key.Key_Right:
@@ -429,6 +431,7 @@ class ImageViewer(QMainWindow):
 
 
     def mousePressEvent(self, event):
+        # TODO: キーアサイン再考
         if event.button() == Qt.MouseButton.LeftButton:
             self.show_next_image()
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -488,29 +491,41 @@ class ImageViewer(QMainWindow):
 
 
 def main():
-    # TODO: argparse
-    #   --fresh: パス設定を読み込まない
-    if len(sys.argv) < 2:
-        # High DPIサポートを有効化
-        QApplication.setHighDpiScaleFactorRoundingPolicy(
-            Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-        )
+    # argparse
+    parser = argparse.ArgumentParser(
+        description='Simple Image Viewer'
+    )
+    parser.add_argument(
+        'files',
+        nargs='*',
+        help='image files or directories.'
+    )
+    parser.add_argument(
+        '-r', '--recursive',
+        action='store_true',
+        help='search subdirectories too.'
+    )
+    args = parser.parse_args()
 
-        app = QApplication(sys.argv)
-        viewer = ImageViewer([])
-        viewer.show()
-        sys.exit(app.exec())
+    image_files = []
 
     # 画像ファイルのリストを作成
-    image_files = []
-    for path in sys.argv[1:]:
+    for path in args.files:
         p = Path(path)
         if p.is_file():
             image_files.append(p)
         elif p.is_dir():
-            image_files.extend(p.glob('**/*'))
+            if args.recursive:
+                image_files.extend(p.glob('**/*'))
+            else:
+                image_files.extend(p.glob('*'))
 
+    # High DPIサポートを有効化
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
     app = QApplication(sys.argv)
+
     viewer = ImageViewer(image_files)
     viewer.show()
     sys.exit(app.exec())
