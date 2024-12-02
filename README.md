@@ -15,8 +15,8 @@ python image_view.py <directory>
 ```
 
   - LMB / Right:  Next image
-  - MMB / Left:   Previous image
-  - RMB :   Context Menu
+  - RMB / Left:   Previous image
+  - MMB / Space:   Context Menu
   - R:  Toggle random order
   - H:  Toggle H-flip
   - Ctrl + C: Copy image path

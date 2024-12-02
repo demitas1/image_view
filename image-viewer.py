@@ -144,10 +144,6 @@ class ImageViewer(QMainWindow):
 
 
     def setup_context_menu(self):
-        """コンテキストメニューの設定"""
-        self.image_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.image_label.customContextMenuRequested.connect(self.show_context_menu)
-
         # Copy アクションをショートカットキーと共に作成
         # OS 標準の Ctrl+C を使用する
         self.copy_action = QAction("Copy", self)
@@ -156,7 +152,7 @@ class ImageViewer(QMainWindow):
         self.addAction(self.copy_action)
 
 
-    def show_context_menu(self, position):
+    def show_context_menu(self, position=None):
         """コンテキストメニューを表示"""
         context_menu = QMenu(self)
         # フォントサイズ調整
@@ -202,7 +198,10 @@ class ImageViewer(QMainWindow):
         context_menu.addAction(quit_action)
 
         # メニューを表示
-        context_menu.exec(self.image_label.mapToGlobal(position))
+        if position:
+            context_menu.exec(self.image_label.mapToGlobal(position))
+        else:
+            context_menu.exec(self.mapToGlobal(self.rect().center()))
 
 
     def open_file_dialog(self):
@@ -413,7 +412,6 @@ class ImageViewer(QMainWindow):
 
 
     def keyPressEvent(self, event: QKeyEvent):
-        # TODO: キーアサイン再考
         if event.key() == Qt.Key.Key_Q:
             self.close()
         elif event.key() == Qt.Key.Key_Right:
@@ -428,14 +426,19 @@ class ImageViewer(QMainWindow):
             self.toggle_shuffle()
         elif event.key() == Qt.Key.Key_H:
             self.toggle_h_flip()
+        elif event.key() == Qt.Key.Key_Space:
+            self.show_context_menu()
 
 
     def mousePressEvent(self, event):
-        # TODO: キーアサイン再考
+        pos = event.pos()
+
         if event.button() == Qt.MouseButton.LeftButton:
             self.show_next_image()
-        if event.button() == Qt.MouseButton.MiddleButton:
+        if event.button() == Qt.MouseButton.RightButton:
             self.show_prev_image()
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.show_context_menu(position=pos)
 
 
     def show_prev_image(self):
