@@ -19,7 +19,7 @@ python image_view.py <directory>
   - MMB / Space:   Context Menu
   - R:  Toggle random order
   - H:  Toggle H-flip
-  - Ctrl + C: Copy image path
+  - Ctrl + C: Copy image
   - Q:  Quit
 
 # License
