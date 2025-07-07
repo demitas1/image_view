@@ -4,14 +4,14 @@ import sys
 import random
 import argparse
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QMimeData
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QFileDialog,
     QMenu, QSizePolicy,
 )
 from PyQt6.QtGui import (
     QPixmap, QImage, QKeyEvent, QTransform,
-    QAction, QKeySequence, QIcon,
+    QAction, QKeySequence, QIcon, QColorSpace,
 )
 
 from open_dir_dialog import DialogResult, CustomDirectoryDialog
@@ -67,6 +67,9 @@ class ImageViewer(QMainWindow):
         # ウィンドウの最小サイズを設定
         self.setMinimumSize(100, 100)
 
+        # メニューバー設定
+        self.create_menu_bar()
+
         # 画像表示用のラベルを作成
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -74,12 +77,32 @@ class ImageViewer(QMainWindow):
         self.image_label.setMinimumSize(0, 0)
         self.setCentralWidget(self.image_label)
 
-        # コンテキストメニューの設定
-        self.setup_context_menu()
+        # Ctrl+C の設定
+        self.setup_shortcut()
 
         # 最初の画像を表示
         self.show_current_image()
 
+
+    def create_menu_bar(self):
+        menubar = self.menuBar()
+
+        # ファイルメニュー
+        file_menu = menubar.addMenu("File")
+
+        # Open Files アクション
+        open_action = QAction("Open Files", self)
+        open_action.triggered.connect(self.open_file_dialog)
+        file_menu.addAction(open_action)
+
+        # Open Directory アクション
+        open_action = QAction("Open Directory", self)
+        open_action.triggered.connect(self.open_directory_dialog)
+        file_menu.addAction(open_action)
+
+        # TODO: context_menu と同様のアイテムを追加する
+        # TODO: help を追加する
+        # TODO: フォントサイズ調整
 
     def filter_image_files(self, files):
         """有効な画像ファイルをフィルタリング"""
@@ -102,7 +125,7 @@ class ImageViewer(QMainWindow):
 
         n_images = len(self.image_files)
         if n_images > 0:
-            sequence = list(range(n_images + 1))
+            sequence = list(range(n_images))
             random.shuffle(sequence)
             self.shuffle_table = sequence
         else:
@@ -133,6 +156,28 @@ class ImageViewer(QMainWindow):
             clipboard = QApplication.clipboard()
             clipboard.setText(str(self.image_files[self.current_index].absolute()))
 
+    def copy_image_to_clipboard(self):
+        """MimeDataを使用してクリップボードに転送"""
+        if not self.image_files:
+            return
+
+        # 現在の画像
+        if self.shuffle:
+            index = self.shuffle_table[self.current_index]
+        else:
+            index = self.current_index
+
+        # 画像を読み込み
+        # プロファイルを削除（sRGBとして扱われる）
+        image_path = str(self.image_files[index])
+        image = QImage(image_path)
+        image.setColorSpace(QColorSpace())
+        pixmap = QPixmap.fromImage(image)
+
+        clipboard = QApplication.clipboard()
+        mime_data = QMimeData()
+        mime_data.setImageData(pixmap.toImage())
+        clipboard.setMimeData(mime_data)
 
     def create_blank_image(self):
         """黒い画像を生成"""
@@ -143,12 +188,12 @@ class ImageViewer(QMainWindow):
         return QPixmap.fromImage(image)
 
 
-    def setup_context_menu(self):
+    def setup_shortcut(self):
         # Copy アクションをショートカットキーと共に作成
         # OS 標準の Ctrl+C を使用する
         self.copy_action = QAction("Copy", self)
         self.copy_action.setShortcut(QKeySequence.StandardKey.Copy)
-        self.copy_action.triggered.connect(self.copy_image_path)
+        self.copy_action.triggered.connect(self.copy_image_to_clipboard)
         self.addAction(self.copy_action)
 
 
@@ -169,7 +214,14 @@ class ImageViewer(QMainWindow):
         context_menu.addAction(open_action)
 
         # Copy アクション
-        context_menu.addAction(self.copy_action)
+        copy_action = QAction("Copy", self)
+        copy_action.triggered.connect(self.copy_image_to_clipboard)
+        context_menu.addAction(copy_action)
+
+        # Copy Path アクション
+        copy_path_action = QAction("Copy Path", self)
+        copy_path_action.triggered.connect(self.copy_image_path)
+        context_menu.addAction(copy_path_action)
 
         # 水平反転
         if self.h_flip:
@@ -289,6 +341,7 @@ class ImageViewer(QMainWindow):
         self.image_label.setPixmap(flipped_pixmap)
 
         # ウィンドウタイトルを更新
+        # TODO: Shuffle, Flip の状態を追加
         if self.image_files:
             self.setWindowTitle(f'Image Viewer - {self.image_files[index].name}')
         else:
