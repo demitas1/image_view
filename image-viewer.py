@@ -151,21 +151,17 @@ class ImageViewer(QMainWindow):
 
     def copy_image_path(self):
         """現在の画像のパスをクリップボードにコピー"""
-        if self.image_files:
+        index = self.current_image_index()
+        if index >= 0:
             # クリップボードに画像のパスをコピー
             clipboard = QApplication.clipboard()
-            clipboard.setText(str(self.image_files[self.current_index].absolute()))
+            clipboard.setText(str(self.image_files[index].absolute()))
 
     def copy_image_to_clipboard(self):
         """MimeDataを使用してクリップボードに転送"""
-        if not self.image_files:
-            return
-
-        # 現在の画像
-        if self.shuffle:
-            index = self.shuffle_table[self.current_index]
-        else:
-            index = self.current_index
+        index = self.current_image_index()
+        if index < 0:
+            return  # 画像がない
 
         # 画像を読み込み
         # プロファイルを削除（sRGBとして扱われる）
@@ -301,23 +297,45 @@ class ImageViewer(QMainWindow):
                 # 新しい画像の表示
                 self.show_current_image()
 
-
-    def show_current_image(self):
-        """現在の画像を表示"""
+    def current_image_index(self):
+        """現在の画像のインデックス"""
         if not self.image_files:
-            # 画像ファイルが無い場合は黒画像を表示
-            pixmap = self.create_blank_image()
+            # 画像ファイルが無い
+            return -1
         else:
             # シャッフル
             if self.shuffle:
-                index = self.shuffle_table[self.current_index]
+                return self.shuffle_table[self.current_index]
             else:
-                index = self.current_index
+                return self.current_index
 
-            # 画像を読み込み
-            image_path = str(self.image_files[index])
+    def current_image_path(self):
+        """現在の画像のファイルパス"""
+        index = self.current_image_index()
+
+        if index < 0:
+            return None  # 画像ファイルが無い
+
+        return str(self.image_files[index])
+
+    def current_image_filename(self):
+        """現在の画像のファイルパス"""
+        index = self.current_image_index()
+
+        if index < 0:
+            return None  # 画像ファイルが無い
+
+        return self.image_files[index].name
+
+    def show_current_image(self):
+        """現在の画像を表示"""
+        image_path = self.current_image_path()
+
+        if image_path is None:
+            # 画像ファイルが無い場合は黒画像を表示
+            pixmap = self.create_blank_image()
+        else:
             pixmap = QPixmap(image_path)
-
             if pixmap.isNull():
                 # 画像の読み込みに失敗した場合は黒画像を表示
                 pixmap = self.create_blank_image()
@@ -342,8 +360,9 @@ class ImageViewer(QMainWindow):
 
         # ウィンドウタイトルを更新
         # TODO: Shuffle, Flip の状態を追加
-        if self.image_files:
-            self.setWindowTitle(f'Image Viewer - {self.image_files[index].name}')
+        image_name = self.current_image_filename()
+        if image_name:
+            self.setWindowTitle(f'Image Viewer - {image_name}')
         else:
             self.setWindowTitle('Image Viewer - No Image')
 
@@ -444,12 +463,9 @@ class ImageViewer(QMainWindow):
             # 画像ファイルリストが空でない場合のみ、recent_filesを更新
             if self.image_files:
                 settings['recent_files'] = [str(f) for f in self.image_files]
-                if self.shuffle:
-                    # シャッフルをOFFにする場合、シャッフル後のインデックスを使用する
-                    index = self.shuffle_table[self.current_index]
-                else:
-                    index = self.current_index
-                settings['recent_index'] = str(index)
+                index = self.current_image_index()
+                if index >= 0:
+                    settings['recent_index'] = str(index)
 
             # 設定を保存
             with open(self.config_file, 'w', encoding='utf-8') as f:
