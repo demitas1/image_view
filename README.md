@@ -22,6 +22,19 @@ python image_view.py <directory>
   - Ctrl + C: Copy image
   - Q:  Quit
 
+## Build
+
+```
+# in venv
+pip install pyinstaller
+
+# build
+pyinstaller --onefile --windowed image-viewer
+
+# executable
+ls dist/image-viewer
+```
+
 # License
 
 - GPL v3
