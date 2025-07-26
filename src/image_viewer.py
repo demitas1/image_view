@@ -29,12 +29,21 @@ class ImageViewer(QMainWindow):
 
     def _setup_window_icon(self):
         icon = QIcon()
-        icon.addFile('../icon/icon_16.png', QSize(16, 16))
-        icon.addFile('../icon/icon_32.png', QSize(32, 32))
-        icon.addFile('../icon/icon_48.png', QSize(48, 48))
-        icon.addFile('../icon/icon_64.png', QSize(64, 64))
-        icon.addFile('../icon/icon_128.png', QSize(128, 128))
-        icon.addFile('../icon/icon_256.png', QSize(256, 256))
+        import os
+        if getattr(sys, 'frozen', False):
+            # PyInstallerでビルドされた場合
+            base_path = sys._MEIPASS
+            icon_path = os.path.join(base_path, 'icon')
+        else:
+            # 開発環境の場合
+            icon_path = '../icon'
+        
+        icon.addFile(f'{icon_path}/icon_16.png', QSize(16, 16))
+        icon.addFile(f'{icon_path}/icon_32.png', QSize(32, 32))
+        icon.addFile(f'{icon_path}/icon_48.png', QSize(48, 48))
+        icon.addFile(f'{icon_path}/icon_64.png', QSize(64, 64))
+        icon.addFile(f'{icon_path}/icon_128.png', QSize(128, 128))
+        icon.addFile(f'{icon_path}/icon_256.png', QSize(256, 256))
         self.setWindowIcon(icon)
 
     def _initialize_managers(self):
