@@ -29,7 +29,7 @@ python image_view.py <directory>
 pip install pyinstaller
 
 # build
-pyinstaller --onefile --windowed image-viewer
+pyinstaller image-viewer.spec
 
 # executable
 ls dist/image-viewer

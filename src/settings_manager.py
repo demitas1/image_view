@@ -77,6 +77,6 @@ class SettingsManager:
             return
             
         settings = self.load_settings()
-        settings['recent_files'] = [str(f) for f in files]
+        settings['recent_files'] = [str(f.resolve()) for f in files]
         settings['recent_index'] = str(current_index)
         self.save_settings(settings)

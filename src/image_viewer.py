@@ -237,14 +237,14 @@ def main():
 
     image_files = []
     for path in args.files:
-        p = Path(path)
+        p = Path(path).resolve()
         if p.is_file():
             image_files.append(p)
         elif p.is_dir():
             if args.recursive:
-                image_files.extend(p.glob('**/*'))
+                image_files.extend([f.resolve() for f in p.glob('**/*') if f.is_file()])
             else:
-                image_files.extend(p.glob('*'))
+                image_files.extend([f.resolve() for f in p.glob('*') if f.is_file()])
 
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
