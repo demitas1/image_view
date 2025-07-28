@@ -13,7 +13,6 @@ class ImageListManager:
         self._shuffle_table: List[int] = []
 
     def set_image_files(self, files: List[Path], current_index: int = 0):
-        print(f'set image files: {len(files)}')
         self._image_files = self._filter_image_files(files)
         self._current_index = min(current_index, len(self._image_files) - 1) if self._image_files else 0
         self._generate_shuffle_table()

@@ -30,21 +30,23 @@ class ImageViewer(QMainWindow):
 
     def _setup_window_icon(self):
         icon = QIcon()
-        import os
+        
         if getattr(sys, 'frozen', False):
             # PyInstallerでビルドされた場合
-            base_path = sys._MEIPASS
-            icon_path = os.path.join(base_path, 'icon')
+            base_path = Path(sys._MEIPASS)
         else:
             # 開発環境の場合
-            icon_path = '../icon'
+            base_path = Path(__file__).parent.resolve()
         
-        icon.addFile(f'{icon_path}/icon_16.png', QSize(16, 16))
-        icon.addFile(f'{icon_path}/icon_32.png', QSize(32, 32))
-        icon.addFile(f'{icon_path}/icon_48.png', QSize(48, 48))
-        icon.addFile(f'{icon_path}/icon_64.png', QSize(64, 64))
-        icon.addFile(f'{icon_path}/icon_128.png', QSize(128, 128))
-        icon.addFile(f'{icon_path}/icon_256.png', QSize(256, 256))
+        icon_path = base_path / 'icon'
+        
+        # アイコンファイルを追加
+        icon.addFile(str(icon_path / 'icon_16.png'), QSize(16, 16))
+        icon.addFile(str(icon_path / 'icon_32.png'), QSize(32, 32))
+        icon.addFile(str(icon_path / 'icon_48.png'), QSize(48, 48))
+        icon.addFile(str(icon_path / 'icon_64.png'), QSize(64, 64))
+        icon.addFile(str(icon_path / 'icon_128.png'), QSize(128, 128))
+        icon.addFile(str(icon_path / 'icon_256.png'), QSize(256, 256))
         self.setWindowIcon(icon)
 
     def _initialize_managers(self):
@@ -248,7 +250,6 @@ class ImageViewer(QMainWindow):
         include_subdirs = entry.get('include_subdirs', False)
         
         directory = Path(directory_path)
-        print(f'open recent dir: {directory_path}, include_subdirs: {include_subdirs}')
         if directory.is_dir():
             files = FileDialogManager.get_directory_files(directory, include_subdirs)
             self.image_list_manager.set_image_files(files, 0)

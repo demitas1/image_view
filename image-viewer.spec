@@ -5,7 +5,7 @@ a = Analysis(
     ['src/image_viewer.py'],
     pathex=[],
     binaries=[],
-    datas=[('icon', 'icon')],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
