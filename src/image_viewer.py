@@ -17,9 +17,10 @@ from ui_manager import UIManager
 
 
 class ImageViewer(QMainWindow):
-    def __init__(self, image_files):
+    def __init__(self, image_files, recursive=False):
         super().__init__()
         
+        self._recursive = recursive
         self._setup_window_icon()
         self._initialize_managers()
         self._setup_window()
@@ -74,20 +75,32 @@ class ImageViewer(QMainWindow):
     def _load_initial_data(self, image_files):
         if image_files:
             self.image_list_manager.set_image_files(image_files, 0)
+            # コマンドライン引数からディレクトリが指定された場合の履歴記録
+            # メニューバー作成後に更新するためフラグを設定
+            self._pending_directory_record = image_files
         else:
             recent_files = self.settings_manager.get_recent_files()
             recent_index = self.settings_manager.get_recent_index()
             self.image_list_manager.set_image_files(recent_files, recent_index)
+            self._pending_directory_record = None
 
     def _setup_ui(self):
         self.setCentralWidget(self.image_label)
         
+        recent_directories = self.settings_manager.get_directory_history()
         self.ui_manager.create_menu_bar(
             self._open_file_dialog,
-            self._open_directory_dialog
+            self._open_directory_dialog,
+            self._open_recent_directory,
+            recent_directories
         )
         
         self.ui_manager.setup_copy_shortcut(self._copy_image_to_clipboard)
+        
+        # 保留中のディレクトリ記録があれば処理
+        if hasattr(self, '_pending_directory_record') and self._pending_directory_record:
+            self._record_directory_from_files(self._pending_directory_record)
+            self._pending_directory_record = None
 
     def _show_current_image(self):
         current_path = self.image_list_manager.get_current_image_path()
@@ -114,6 +127,9 @@ class ImageViewer(QMainWindow):
             if directory.is_dir():
                 files = FileDialogManager.get_directory_files(directory, result.include_subdirs)
                 self.image_list_manager.set_image_files(files, 0)
+                if self.image_list_manager.has_images():
+                    self.settings_manager.add_directory_to_history(str(directory), result.include_subdirs)
+                    self._update_recent_directories_menu()
                 self._show_current_image()
 
     def _copy_image_to_clipboard(self):
@@ -227,6 +243,39 @@ class ImageViewer(QMainWindow):
         elif event.button() == Qt.MouseButton.MiddleButton:
             self._show_context_menu(position=pos)
 
+    def _open_recent_directory(self, entry):
+        directory_path = entry.get('path', '')
+        include_subdirs = entry.get('include_subdirs', False)
+        
+        directory = Path(directory_path)
+        print(f'open recent dir: {directory_path}, include_subdirs: {include_subdirs}')
+        if directory.is_dir():
+            files = FileDialogManager.get_directory_files(directory, include_subdirs)
+            self.image_list_manager.set_image_files(files, 0)
+            if self.image_list_manager.has_images():
+                self.settings_manager.add_directory_to_history(str(directory), include_subdirs)
+                self._update_recent_directories_menu()
+            self._show_current_image()
+
+    def _update_recent_directories_menu(self):
+        recent_directories = self.settings_manager.get_directory_history()
+        self.ui_manager.update_recent_directories_menu(recent_directories, self._open_recent_directory)
+
+    def _record_directory_from_files(self, image_files):
+        if not image_files or not self.image_list_manager.has_images():
+            return
+        
+        # 最初のファイルの親ディレクトリを取得
+        first_file = image_files[0]
+        directory = first_file.parent
+        
+        # すべてのファイルが同じディレクトリにあるかチェック
+        same_directory = all(f.parent == directory for f in image_files)
+        
+        if same_directory:
+            self.settings_manager.add_directory_to_history(str(directory), self._recursive)
+            self._update_recent_directories_menu()
+
 
 def main():
     parser = argparse.ArgumentParser(description='Simple Image Viewer')
@@ -251,7 +300,7 @@ def main():
     )
     app = QApplication(sys.argv)
 
-    viewer = ImageViewer(image_files)
+    viewer = ImageViewer(image_files, args.recursive)
     viewer.show()
     sys.exit(app.exec())
 

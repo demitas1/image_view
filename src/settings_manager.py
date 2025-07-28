@@ -17,6 +17,7 @@ class SettingsManager:
             },
             'recent_files': [],
             'recent_index': 0,
+            'directory_history': [],
         }
 
     def _get_config_dir(self) -> Path:
@@ -79,4 +80,32 @@ class SettingsManager:
         settings = self.load_settings()
         settings['recent_files'] = [str(f.resolve()) for f in files]
         settings['recent_index'] = str(current_index)
+        self.save_settings(settings)
+
+    def get_directory_history(self) -> List[Dict[str, Any]]:
+        settings = self.load_settings()
+        history = settings.get('directory_history', [])
+        
+        # 旧形式（文字列リスト）から新形式（辞書リスト）へ変換
+        if history and isinstance(history[0], str):
+            history = [{'path': path, 'include_subdirs': False} for path in history]
+            settings['directory_history'] = history
+            self.save_settings(settings)
+        
+        return history
+
+    def add_directory_to_history(self, directory_path: str, include_subdirs: bool = False):
+        settings = self.load_settings()
+        history = self.get_directory_history()
+        
+        new_entry = {'path': directory_path, 'include_subdirs': include_subdirs}
+        
+        # 既存の同じパスを削除
+        history = [item for item in history if item.get('path') != directory_path]
+        
+        # 先頭に追加
+        history.insert(0, new_entry)
+        
+        # 最大10個まで保持
+        settings['directory_history'] = history[:10]
         self.save_settings(settings)
